@@ -1,11 +1,96 @@
 ###
+# Emily Beckman Bruns testing Dan Carver's modeling method
+# 13 December 2022
+# R version 4.2.2
+# Pulled over variable definitions from run_lineal.R so everything is in
+#  one place for testing.
+###
+
+###
 # Primary function to call all functions that are a part of the modeling method. 
 # dan.carver@carver.com 
 # 20200414
 ### 
 
-master_run <- function(species){
-  species <<- species
+pacman::p_load(tidyverse, sp, raster,rgdal, tmap, devtools,
+               randomForest,rgeos,VSURF,modelr,maxnet,
+               pROC,dismo,redlistr,fasterize, devtools, DT)
+#install_github("ccsosa/GapAnalysis")
+#devtools::install_github("DFJL/SamplingUtil")
+#devtools::install_github("hunzikp/velox")
+#devtools::install_github("valentinitnelav/geobuffer")
+library(geobuffer)
+library(velox)
+library(SamplingUtil)
+tmap::tmap_mode("view")
+
+# set all standard directories
+base_dir <<- "/Users/emily/Desktop/*work/NorthAm-CWR"
+repo_dir <<- paste0(base_dir , "/src")
+gap_dir <<- paste0(base_dir , "/gap_analysis")
+par_dir <<- paste0(base_dir , "/parameters")
+occ_dir <<- paste0(par_dir, "/occurrenceData")
+temp_dir <<- paste0(base_dir , "/TEMP")
+
+# set name of the run version 
+run_version <<- "temp20221213"
+
+# set adjustable parameters 
+numPoints <<- 2000 # maximum number of points used in model (subSampleCountry.R)
+bufferDist <<- 50000 # used to define buffer distance in gBuffer.r
+set.seed(1234)
+
+## set all primary file sources...
+
+# worldclim variables
+  # bioVars <<- readRDS(paste0(par_dir,"/bioLayer_2.5/climate_vx.RDS")) # need to install velox via dev tools. 
+  ### velox object is not working 
+rasters <- list.files(path = paste0(par_dir,"/worldclim/30arcSec"), full.names = TRUE, recursive = TRUE)
+rList <- c()
+for(i in 1:length(rasters)){
+  rList  <- append(x = rList, raster::raster(rasters[i]))
+}
+bioVars <<- raster::stack(rList)
+
+# country boundaries; downloaded from:
+#   https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+countrySHP <<- rgdal::readOGR(paste0(par_dir,"/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp"),verbose = FALSE)
+
+# SAY WHAT THIS IS
+naSHP <<- rgdal::readOGR(paste0(par_dir,"/allUSAArea/NorthAmerica_AllUSA.shp"), verbose = FALSE)
+  # excluding pacific territories- runs near all species faster 
+  #naSHP <<- readOGR(paste0(par_dir,"/northAmericaArea/northAmericaArea.shp"),verbose = FALSE)
+
+# global ecoregions & protected areas; downloaded from:
+#   https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/WTLNRG
+ecoReg <<- rgdal::readOGR(paste0(par_dir,"/ecoregions/tnc_terr_ecoregions.shp"),verbose = FALSE)
+proArea <<- raster::raster(paste0(par_dir,"/protectedAreas/wdpa_reclass.tif"))
+  # running with the PAUD dataset 
+  #proArea <<- raster::raster(paste0(par_dir, "/protectedAreas/PAUDrasters/allAreas.tif"))
+
+# target taxa occurrence point data
+#   EBB- compiled using this repo: https://github.com/eb-bruns/SDBG_CWR-trees-gap-analysis
+  # can read in as one file like this...
+#occData <- data.table::fread(paste0(base_dir,"/occurrence_data2019_05_29/combinedOccurance2020-07-21a.csv"),header = TRUE)
+#occData <<- occData[,2:ncol(occData)]
+  # ...or as taxon-level files and combine:
+taxonFiles <- list.files(paste0(occ_dir,"/taxon_edited_points"),pattern = ".csv",full.names = TRUE)
+taxonDfs <- lapply(taxonFiles,read.csv,header = TRUE,na.strings = c("","NA"),colClasses = "character")
+occData <<- Reduce(bind_rows, taxonDfs)
+
+# list of target taxa
+taxonList <- unique(occData$taxon_name_accepted)
+
+# SAY WHAT THESE ARE
+layerDescription <<- read.csv(paste0(par_dir,"/layerDesrciptions.csv"))
+statesData <<- read.csv(paste0(par_dir,"/statePerTaxon/CWRofUSA_nativeareas_2020_1_30.csv"))
+statesSpObject <<- readRDS(paste0(par_dir,"/statesByCountry/gadmCanUsaMex_sp.rds"))
+
+
+### main function for modeling
+#master_run <- function(species){
+  #species <<- species
+  species <<- 
   print(paste0("the process for ", species, " has begun."))
   
   # build a datframe that captures the total run time for a process.
