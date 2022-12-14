@@ -50,6 +50,7 @@ subSampleByCountry<-function(species){
   cleanData <- rbind(data.frame(muestra), dG)
   write.csv(cleanData, file = paste0(sp_dir,"/cleanedModelingData.csv"),row.names = FALSE)
   # reassign cleanPoints to represent the subsampled data
-  cleanPoints <<- SpatialPointsDataFrame(coords = cleanData[,c(3,2)], data = cleanData)
+  cleanPoints <<- SpatialPointsDataFrame(
+    coords = cleanData[,c("longitude","latitude")], data = cleanData)
   raster::crs(cleanPoints) <- raster::crs(ecoReg)
 }
