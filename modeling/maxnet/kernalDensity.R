@@ -11,8 +11,12 @@
 ###
 
 kernalDensity <- function(species){
+  # EBB: got "cleanPoints must be a sf, or sfc object" error; converting
+  cleanPoints_sf <- st_as_sf(cleanPoints)
+  # EBB: got "thrshold must be a terra SpatRast object" error; converting
+  thrshold_rast <- rast(thrshold)
   # so both cleanPoints and thrshold are both global objects so I should need to call them
-  k2 <- spatialEco::sp.kde(x = cleanPoints, newdata = thrshold, standardize = TRUE)
+  k2 <- spatialEco::sp.kde(x = cleanPoints_sf, ref = thrshold_rast, standardize = TRUE)
   raster::writeRaster(x = k2, filename = paste0(sp_dir, "/modeling/kernalDensity.tif"),overwrite=TRUE)
 
   # potential work flow for test idea
