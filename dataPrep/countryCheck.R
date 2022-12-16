@@ -22,7 +22,7 @@ countryCheck <- function(species){
 
   # add data back to spPoints and drop all columns that have no ISO3
   spPoint@data$iso3_check <- countryVal$ISO_A3
-  onLand<- complete.cases(spPoint@data$iso3_check) #https://stackoverflow.com/questions/21567028/extracting-points-with-polygon-in-r
+  onLand <- complete.cases(spPoint@data$iso3_check) #https://stackoverflow.com/questions/21567028/extracting-points-with-polygon-in-r
   spPoint <- spPoint[onLand,]
 
 # EBB: skipping the state filter step     
@@ -64,10 +64,10 @@ countryCheck <- function(species){
 #          if(t2 != 0){
 #            spPoint <- rbind(mucPoints,nonMucPoints )
 #            # filter Duplicates
-#            uniqueP <- distinct(spPoint@data)
-#            coords <- cbind(uniqueP$longitude, uniqueP$latitude)
+            uniqueP <- distinct(spPoint@data)
+            coords <- cbind(uniqueP$longitude, uniqueP$latitude)
 #            # base data used in the modeling process.
-#            cleanPoints <<- sp::SpatialPointsDataFrame(coords = coords, data = uniqueP, proj4string = crs(spPoint))
+            cleanPoints <<- sp::SpatialPointsDataFrame(coords = coords, data = uniqueP, proj4string = crs(spPoint))
 #        }else{
 #          # if no occurrence data is found within the selected states this
 #          # this process defaults back to include all data.
@@ -77,7 +77,7 @@ countryCheck <- function(species){
 #        }else{
 #        # if no occurrence are found in can,usa,mex the all points are kept 
 #      spPoint <- nonMucPoints
-      cleanPoints <<- spPoint
+#      cleanPoints <<- spPoint
     }
 #  }
 #}
