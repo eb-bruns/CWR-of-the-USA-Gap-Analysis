@@ -25,61 +25,29 @@ countryCheck <- function(species){
   onLand <- complete.cases(spPoint@data$iso3_check) #https://stackoverflow.com/questions/21567028/extracting-points-with-polygon-in-r
   spPoint <- spPoint[onLand,]
 
-  ## EBB: changing the state filter (see below) to a country filter   
-  
-  # pull in country data; created using 1-get_taxa_countries.R...
-  #   https://github.com/eb-bruns/SDBG_CWR-trees-gap-analysis/blob/main/1-get_taxa_countries.R
+  ## EBB: changing the state filter (see below) to a country filter.   
+    # pull in country data; created using 1-get_taxa_countries.R...
+    #   https://github.com/eb-bruns/SDBG_CWR-trees-gap-analysis/blob/main/1-get_taxa_countries.R
   allcData <- read.csv(paste0(par_dir,"/target_taxa_with_native_dist.csv"))
   cData <- allcData %>% filter(taxon_name_accepted == species)
   if(nrow(cData) == 0){
-    cleanPoints <<- spPoint
+    spPoint <<- spPoint
   }else{
     ctrys <- unlist(strsplit(cData$all_native_dist_iso2,"; "))
-    t <- spPoint[which(spPoint$ISO_A2 %in% ctrys),]
-          # States SP Object is a large spatial polygon feature loaded in run lineal
-          sSp <- statesSpObject[statesSpObject$NAME_1 %in% sData$State,]
-          if(nrow(sSp)==0){
-            # if no occurrence data is found within the selected states this
-            # this process defaults back to include all data.
-            cleanPoints <<- spPoint
-          }else{
-            #overlay points onto filter states data and remove any points that do not fall within know states
-            crs(mucPoints) <- crs(ecoReg)
-            crs(sSp) <- crs(ecoReg)
-            statePoints <- as.data.frame(over(x = mucPoints, y = sSp))%>%
-              dplyr::select(NAME_1)
-            
-            # add data back to spPoints and drop all columns that have no ISO3
-            mucPoints <- mucPoints[!is.na(statePoints$NAME_1),]
-            t2 <- nrow(mucPoints)
-            #clause for when states were found to contain occurrences
-            if(t2 != 0){
-              spPoint <- rbind(mucPoints,nonMucPoints )
-              # filter Duplicates
+    spPoint <<- spPoint[which(spPoint$ISO_A2 %in% ctrys),]
+  }
+  
+  # filter duplicates
   uniqueP <- distinct(spPoint@data)
   coords <- cbind(uniqueP$longitude, uniqueP$latitude)
-              # base data used in the modeling process.
-  cleanPoints <<- sp::SpatialPointsDataFrame(coords = coords, data = uniqueP, proj4string = crs(spPoint))
-          }else{
-            # if no occurrence data is found within the selected states this
-            # this process defaults back to include all data.
-            cleanPoints <<- spPoint
-          }
-        }
-          }else{
-          # if no occurrence are found in can,usa,mex the all points are kept 
-        spPoint <- nonMucPoints
-        cleanPoints <<- spPoint
-}
- }
+  # base data used in the modeling process.
+  cleanPoints <<- sp::SpatialPointsDataFrame(coords = coords, data = uniqueP, 
+                                             proj4string = crs(spPoint))
+  print(nrow(cleanPoints))
+  plot(cleanPoints)
 }
 
-  
-  
-  
-  
-  
-  
+
   
 ### previous state-level filter...
   
