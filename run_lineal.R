@@ -215,6 +215,36 @@ compile_results <- function(file_name){
 compile_results("eval_metrics.csv")
 
 
+# rename all resulting rasters with taxon name and pull into new folder...
+
+# where you're copying the files
+new_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/Global Tree Conservation Program/4. GTCP_Projects/Gap Analyses/Conservation Gap Analysis - FRUIT & NUT TREE CWR NORTH AMERICA/Gap-Analysis-Mapping/sdm_rasters"
+# pattern for which files you want
+rast_out <- list.files(path = base_dir, pattern = "spdist_thrsld_median.tif", 
+                       full.names = TRUE,  recursive = TRUE)
+# rename files to add taxon name
+  # select beginning part before taxon name
+file_paths <- lapply(rast_out, function(x) unlist(strsplit(x, "spdist"))[1])
+  # see which piece is the taxon name:
+unlist(strsplit(rast_out[1],"\\/"))
+  # change the number to be the piece that is the taxon name:
+taxon_nms <- lapply(rast_out, function(x) unlist(strsplit(x, "\\/"))[9])
+  # rename files
+taxon_nms <- lapply(taxon_nms, function(x) gsub(" ","_",x))
+file_nms <- lapply(taxon_nms, function(x) paste0(x,"-spdist_thrsld_median.tif"))
+file_paths_new <- list()
+for (i in 1:length(file_paths)){
+  file_paths_new <- append(file_paths_new,paste0(file_paths[i],file_nms[i]))
+}
+file.rename(rast_out,unlist(file_paths_new))
+# add these files to the new folder
+lapply(file_paths_new, function(x) file.copy(from=x,t=new_dir))
+
+
+
+
+### NOT RUNNING THE REST ###
+
 
 
 
