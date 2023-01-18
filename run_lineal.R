@@ -73,10 +73,10 @@ bioVars <<- read_rds(paste0(par_dir,"/bioLayer_2.5/parameters.RDS"))
 #   https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
 countrySHP <<- rgdal::readOGR(paste0(par_dir,"/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp"),verbose = FALSE)
 
-# country shapefile clipped to target countries
-naSHP <<- countrySHP[(countrySHP@data$ADMIN == "United States of America" |
-                        countrySHP@data$ADMIN == "Canada" |
-                        countrySHP@data$ADMIN == "Mexico"), ]
+# country shapefile clipped to target region
+unique(countrySHP$REGION_WB)
+naSHP <<- countrySHP[(countrySHP@data$REGION_WB == "North America" |
+                      countrySHP@data$REGION_WB == "Latin America & Caribbean"), ]
 #naSHP <<- rgdal::readOGR(paste0(par_dir,"/allUSAArea/NorthAmerica_AllUSA.shp"), verbose = FALSE)
 # excluding pacific territories- runs near all species faster 
 #naSHP <<- readOGR(paste0(par_dir,"/northAmericaArea/northAmericaArea.shp"),verbose = FALSE)
@@ -94,55 +94,33 @@ proArea <<- raster::raster(paste0(par_dir,"/protectedAreas/wdpa_reclass.tif"))
 #occData <- data.table::fread(paste0(base_dir,"/occurrence_data2019_05_29/combinedOccurance2020-07-21a.csv"),header = TRUE)
 #occData <<- occData[,2:ncol(occData)]
 # ...or as taxon-level files and combine:
-taxonFiles <- list.files(paste0(occ_dir,"/taxon_edited_points"),pattern = ".csv",full.names = TRUE)
-taxonDfs <- lapply(taxonFiles,read.csv,header = TRUE,na.strings = c("","NA"),colClasses = "character")
+taxonFiles <- list.files(paste0(occ_dir, "/taxon_edited_points"),
+                         pattern = ".csv", full.names = TRUE)
+taxonDfs <- lapply(taxonFiles, read.csv, header = TRUE,
+                   na.strings = c("","NA"), colClasses = "character")
 occData <<- Reduce(bind_rows, taxonDfs)
-# as needed: filter based on flagging columns from 5-refine_occurrence_data.R
-occData <- occData %>%
-  mutate(
-    .cen = as.logical(.cen),
-    #.urb = as.logical(.urb),
-    .inst = as.logical(.inst),
-    #.con = as.logical(.con),
-    .outl = as.logical(.outl),
-    #.gtsnative = as.logical(.gtsnative),
-    #.rlnative = as.logical(.rlnative),
-    .yr1950 = as.logical(.yr1950),
-    .yr1980 = as.logical(.yr1980),
-    .yrna = as.logical(.yrna)
-  ) %>%
-  # select or deselect these filters as desired:
-  filter(
-    #database == "Ex_situ" |
-    (.cen & .inst & .outl &
-       #.con &
-       #.urb & .yr1950 & .yr1980 & .yrna &
-       #(.gtsnative | is.na(.gtsnative)) &
-       #(.rlnative  | is.na(.rlnative)) &
-       #(.rlintroduced | is.na(.rlintroduced)) &
-       basisOfRecord != "FOSSIL_SPECIMEN" & 
-       basisOfRecord != "LIVING_SPECIMEN" &
-       establishmentMeans != "INTRODUCED" & 
-       establishmentMeans != "MANAGED" &
-       establishmentMeans != "CULTIVATED" #&
-       #latlong_countryCode %in% c("US","CA","MX")
-     )) %>%
-  ## remove specific ids
-  filter(
-    !(id == "id00048470")
-  ) 
-  # edit data to match format needed for GapAnalysis
-  mutate(type = recode(database,
-                       "Ex_situ" = "G",
-                       .default = "H")) %>%
-  rename(taxon = taxon_name_accepted,
-         latitude = decimalLatitude,
-         longitude = decimalLongitude,
-         databaseSource = database) %>%
+# read in manual edits to occurrence data (flagging additional bad points, etc)
+manual_pt_edits <- read.csv(paste0(occ_dir, "/manual_point_edits.csv"),
+                            na.strings = c("NA",""), colClasses = "character")
+# filter points based on flagging columns and manual edits
+source("/Users/emily/Documents/GitHub/SDBG_CWR-trees-gap-analysis/filter_points.R")
+all_occ <- filter.points(occData, manual_pt_edits)
+# edit occurrence data to match format needed for GapAnalysis
+all_occ$databaseSource <- all_occ$database
+occData <- all_occ %>%
+  dplyr::mutate(database = recode(database,
+                                  "Ex_situ" = "G",
+                                  .default = "H")) %>%
+  dplyr::rename(taxon = taxon_name_accepted,
+                latitude = decimalLatitude,
+                longitude = decimalLongitude,
+                type = database
+                ) %>%
   dplyr::select(-genus) %>%
   separate(col="taxon",into="genus",sep=" ",extra="drop",remove=F) #%>%
-#dplyr::select(genus,taxon,latitude,longitude,type)
-#occData$species <- gsub(" ","_",occData$species)
+  #dplyr::select(genus,taxon,latitude,longitude,type)
+  #occData$species <- gsub(" ","_",occData$species)
+str(occData)
 
 # list of target taxa
 spList <- unique(occData$taxon)
@@ -172,7 +150,7 @@ genera <- unique(occData$genus)
 # select all species at the genus level and apply master script to run process
 #beepr::beep_on_error(
 #  for(i in genera){
-i <- genera[5]
+i <- genera[6]
 
     t2a <- Sys.time()
     genus <<- i
@@ -209,7 +187,11 @@ compile_results <- function(file_name){
   dfs <- lapply(files, read.csv, header=TRUE)
   results <- Reduce(bind_rows, dfs)
   print(nrow(results))
-  write.csv(results, file.path(base_dir,"gap_analysis","summaryDocs",file_name))
+  date_add <- sapply(strsplit(files, "temp-"), "[", 2)
+  date_add <- sapply(strsplit(date_add, "/"), "[", 1)
+  results$run_date <- date_add
+  write.csv(results, file.path(base_dir,"gap_analysis","summaryDocs",file_name),
+            row.names=F)
 }
 
 compile_results("eval_metrics.csv")
@@ -222,6 +204,8 @@ new_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/Global Tree
 # pattern for which files you want
 rast_out <- list.files(path = base_dir, pattern = "spdist_thrsld_median.tif", 
                        full.names = TRUE,  recursive = TRUE)
+  # can also get ones from a specific date, if done more than once:
+  rast_out <- rast_out[grepl("2023-01-17",rast_out)]
 # rename files to add taxon name
   # select beginning part before taxon name
 file_paths <- lapply(rast_out, function(x) unlist(strsplit(x, "spdist"))[1])
