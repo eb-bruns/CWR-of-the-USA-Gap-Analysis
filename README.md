@@ -1,3 +1,5 @@
+# My forked version of Dan Carver's repository for creating species distribution models for target North American crop wild relatives. Small changes based on package updates since the repo was developed, and to input our specific 95 target taxa. You can find results at https://NorthAmericanFruitNutTreeCWR.github.io/. Original README below --
+
 # Crop Wild Relative of the USA
 
 ## Code base for "[Crop wild relatives of the United States require urgent conservation action](https://www.pnas.org/content/117/52/33351)"
